@@ -1,297 +1,256 @@
 import numpy as np
 
+# =============================================================================
+# Board Constants
+# =============================================================================
+BOARD_ROWS = 6
+BOARD_COLS = 7
+WINNING_LENGTH = 4
 
-################################
-### --- Basics functions --- ###
-################################
+# =============================================================================
+# Board Operations
+# =============================================================================
 
-def update_board(arg_board, col, player):
-    board = np.copy(arg_board)
-    for i in range(5, -1, -1):
-        if board[i][col] == 0:
-            board[i][col] = player
-            return board
-
-
-def get_availables_moves(board):
-    # Get the available columns
-    first_row = board[0]
-    available_col = []
-    for i in range(len(first_row)):
-        if first_row[i] == 0:
-            available_col.append(i)
-
-    # Get the available moves (with row!)
-    available_moves = []
-    for col in available_col:
-        for i in reversed(range(6)):
-            if board[i][col] == 0:
-                available_moves.append([i, col])
-                break
-
-    return available_moves
+def drop_token(board, column, player):
+    """
+    Drop a token in the specified column for the given player.
+    Returns a new board with the token placed at the lowest available row.
+    """
+    new_board = np.copy(board)
+    for row in range(BOARD_ROWS - 1, -1, -1):
+        if new_board[row][column] == 0:
+            new_board[row][column] = player
+            return new_board
+    return new_board
 
 
-def check_win(board, col, player):
-    row = 6
-    for i in range(6):
-        if board[i][col] == player:
-            row = i
+def get_valid_moves(board):
+    """
+    Get all valid moves as a list of [row, column] pairs.
+    A move is valid if the column is not full.
+    """
+    valid_moves = []
+    for col in range(BOARD_COLS):
+        if board[0][col] == 0:
+            for row in range(BOARD_ROWS - 1, -1, -1):
+                if board[row][col] == 0:
+                    valid_moves.append([row, col])
+                    break
+    return valid_moves
+
+
+def get_available_columns(board):
+    """Get list of columns that are not full."""
+    return [col for col in range(BOARD_COLS) if board[0][col] == 0]
+
+
+def is_board_empty(board):
+    """Check if the board is empty (first move of the game)."""
+    return np.sum(board) == 0
+
+
+def get_opponent(player):
+    """Return the opponent's player number (1 -> 2, 2 -> 1)."""
+    return 3 - player
+
+
+# =============================================================================
+# Win Detection
+# =============================================================================
+
+def check_win(board, column, player):
+    """
+    Check if the last move in the given column results in a win.
+    Checks horizontal, vertical, and both diagonal directions.
+    """
+    # Find the row where the token was placed
+    row = -1
+    for r in range(BOARD_ROWS):
+        if board[r][column] == player:
+            row = r
             break
 
-    # Check left
-    if col > 2:
-        if board[row][col - 1] == player:
-            if board[row][col - 2] == player:
-                if board[row][col - 3] == player:
-                    return True
-                
-    # Check 2 lefts and 1 right
-    if col > 1 and col < 6:
-        if board[row][col - 1] == player:
-            if board[row][col - 2] == player:
-                if board[row][col + 1] == player:
-                    return True
-                
-    # Check 1 left and 2 rights
-    if col > 0 and col < 5:
-        if board[row][col - 1] == player:
-            if board[row][col + 1] == player:
-                if board[row][col + 2] == player:
-                    return True
-                
-    # Check right
-    if col < 4:
-        if board[row][col + 1] == player:
-            if board[row][col + 2] == player:
-                if board[row][col + 3] == player:
-                    return True
-                
-    # Check up
-    if row > 2:
-        if board[row - 1][col] == player:
-            if board[row - 2][col] == player:
-                if board[row - 3][col] == player:
-                    return True
-                
-    # Check 2 ups and 1 down
-    if row > 1 and row < 5:
-        if board[row - 1][col] == player:
-            if board[row - 2][col] == player:
-                if board[row + 1][col] == player:
-                    return True
-                
-    # Check 1 up and 2 downs
-    if row > 0 and row < 4:
-        if board[row - 1][col] == player:
-            if board[row + 1][col] == player:
-                if board[row + 2][col] == player:
-                    return True
-                
-    # Check down
-    if row < 3:
-        if board[row + 1][col] == player:
-            if board[row + 2][col] == player:
-                if board[row + 3][col] == player:
-                    return True
-                
-    # Check NW (North West)
-    if col > 2 and row > 2:
-        if board[row - 1][col - 1] == player:
-            if board[row - 2][col - 2] == player:
-                if board[row - 3][col - 3] == player:
-                    return True
-                
-    # Check 2 NW and 1 SE
-    if col > 1 and col < 6 and row > 1 and row < 5:
-        if board[row - 1][col - 1] == player:
-            if board[row - 2][col - 2] == player:
-                if board[row + 1][col + 1] == player:
-                    return True
-                
-    # Check 1 NW and 2 SE
-    if col > 0 and col < 5 and row > 0 and row < 4:
-        if board[row - 1][col - 1] == player:
-            if board[row + 1][col + 1] == player:
-                if board[row + 2][col + 2] == player:
-                    return True
-                
-    # Check SE (South East)
-    if col < 4 and row < 3:
-        if board[row + 1][col + 1] == player:
-            if board[row + 2][col + 2] == player:
-                if board[row + 3][col + 3] == player:
-                    return True
-                
-    # Check NE
-    if col < 4 and row > 2:
-        if board[row - 1][col + 1] == player:
-            if board[row - 2][col + 2] == player:
-                if board[row - 3][col + 3] == player:
-                    return True
-                
-    # Check 2 NE and 1 SW
-    if col > 0 and col < 5 and row > 1 and row < 5:
-        if board[row - 1][col + 1] == player:
-            if board[row - 2][col + 2] == player:
-                if board[row + 1][col - 1] == player:
-                    return True
-                
-    # Check 1 NE and 2 SW
-    if col > 1 and col < 6 and row > 0 and row < 4:
-        if board[row - 1][col + 1] == player:
-            if board[row + 1][col - 1] == player:
-                if board[row + 2][col - 2] == player:
-                    return True
-                
-    # Check SW
-    if col > 2 and row < 3:
-        if board[row + 1][col - 1] == player:
-            if board[row + 2][col - 2] == player:
-                if board[row + 3][col - 3] == player:
-                    return True
+    if row == -1:
+        return False
+
+    # Direction vectors: (row_delta, col_delta)
+    directions = [
+        (0, 1),   # Horizontal
+        (1, 0),   # Vertical
+        (1, 1),   # Diagonal (down-right)
+        (1, -1)   # Diagonal (down-left)
+    ]
+
+    for row_delta, col_delta in directions:
+        count = 1
+
+        # Count in positive direction
+        r, c = row + row_delta, column + col_delta
+        while 0 <= r < BOARD_ROWS and 0 <= c < BOARD_COLS and board[r][c] == player:
+            count += 1
+            r += row_delta
+            c += col_delta
+
+        # Count in negative direction
+        r, c = row - row_delta, column - col_delta
+        while 0 <= r < BOARD_ROWS and 0 <= c < BOARD_COLS and board[r][c] == player:
+            count += 1
+            r -= row_delta
+            c -= col_delta
+
+        if count >= WINNING_LENGTH:
+            return True
+
     return False
 
 
-def get_opponent_player(player):
-    if player == 1:
-        return 2
-    else:
-        return 1
+# =============================================================================
+# Minimax Algorithm
+# =============================================================================
 
+def minimax(node, depth, maximizing_player):
+    """
+    Minimax algorithm to find the best move.
 
-def check_first_stroke(board):
-    np_board = board.copy()
-    if np.sum(np_board) == 0:
-        return True
-    return False
+    Args:
+        node: Current game tree node
+        depth: Remaining search depth
+        maximizing_player: The player trying to maximize the score
 
-
-#################################
-### --- Minimax algorithm --- ###
-#################################
-
-
-def minimax(root_node, depth, maximizing_player):
-    # If we reach the maximum depth (base case)
+    Returns:
+        The best score achievable from this position
+    """
+    # Base case: reached maximum depth
     if depth == 0:
-        if root_node.value == 0:
-            root_node.value += score_evaluation(root_node.player, get_opponent_player(root_node.player), root_node.board, root_node.move, maximizing_player, factor_mult1=5, factor_mult2=10)
-        return root_node.value
+        if node.value == 0:
+            node.value += evaluate_position(
+                node.player,
+                get_opponent(node.player),
+                node.board,
+                node.move,
+                maximizing_player,
+                opponent_weight=5,
+                player_weight=10
+            )
+        return node.value
+
+    # No children means terminal node (win/loss/draw)
+    if not node.children:
+        return node.value
+
+    if node.player != maximizing_player:
+        # Maximizing player's turn
+        max_score = -np.inf
+        for child in node.children:
+            score = minimax(child, depth - 1, maximizing_player)
+            max_score = max(max_score, score)
+        node.value = max_score
+        return max_score
     else:
-        if root_node.children == []:
-            return root_node.value
-
-    # If it's the maximizing player
-    if root_node.player != maximizing_player:
-        max_eval = -np.inf
-        for child in root_node.children:
-            eval = minimax(child, depth - 1, maximizing_player) # Recursive call
-            max_eval = max(max_eval, eval)
-        root_node.value = max_eval # Update the value of the node
-        return max_eval
-
-    # If it's the minimizing player
-    else:
-        min_eval = np.inf
-        for child in root_node.children:
-            eval = minimax(child, depth - 1, maximizing_player) # Recursive call
-            min_eval = min(min_eval, eval)
-        root_node.value = min_eval # Update the value of the node
-        return min_eval
+        # Minimizing player's turn
+        min_score = np.inf
+        for child in node.children:
+            score = minimax(child, depth - 1, maximizing_player)
+            min_score = min(min_score, score)
+        node.value = min_score
+        return min_score
 
 
-################################
-### --- Score evaluation --- ###
-################################
+# =============================================================================
+# Position Evaluation
+# =============================================================================
 
-def evaluate_win_game(board, player, maximizing_player, col):
-    if check_win(board, col, player):
-        # If the maximizing player wins
+WIN_SCORE = 1_000_000
+
+
+def evaluate_terminal_state(board, player, maximizing_player, column):
+    """
+    Check if the position is a winning state.
+
+    Returns:
+        Tuple of (is_terminal, score)
+        - is_terminal: True if someone has won
+        - score: Positive for maximizing player win, negative for opponent win
+    """
+    if check_win(board, column, player):
         if player == maximizing_player:
-            return (True, 1000000)
-        # If the minimizing player wins
+            return (True, WIN_SCORE)
         else:
-            return (True, -1000000)
-    # If no one win
+            return (True, -WIN_SCORE)
     return (False, 0)
 
 
-def evaluate_score(opponent_player, board, move, factor_mult):
-    total_score = 0
+def count_consecutive_tokens(board, row, col, row_delta, col_delta, target_player):
+    """Count consecutive tokens in a direction for threat evaluation."""
+    count = 0
+    for i in range(3):
+        r, c = row + row_delta * i, col + col_delta * i
+        if 0 <= r < BOARD_ROWS and 0 <= c < BOARD_COLS:
+            if board[r][c] == target_player:
+                count += 1
+            else:
+                break
+        else:
+            break
+    return count
+
+
+def evaluate_threats(board, move, target_player, weight):
+    """
+    Evaluate threats around a move position.
+    Higher scores for positions that create or block threats.
+    """
     row, col = move[0], move[1]
+    total_score = 0
 
-    for j in range(-1, 2, 2): # For each direction
-        count = 0
-        for i in range(3):
-            try:
-                if board[row][col + j * i] == opponent_player:
-                    count += 1
-                else:
-                    break
-            except:
-                break
+    # Check all 4 directions (both ways)
+    directions = [
+        (0, 1), (0, -1),   # Horizontal
+        (1, 0), (-1, 0),   # Vertical
+        (1, 1), (-1, -1),  # Diagonal \
+        (1, -1), (-1, 1)   # Diagonal /
+    ]
 
-        total_score += count * factor_mult
-
-    for j in range(-1, 2, 2):  # For each direction
-        count = 0
-        for i in range(3):
-            try:
-                if board[row + j * i][col] == opponent_player:
-                    count += 1
-                else:
-                    break
-            except:
-                break
-
-        total_score += count * factor_mult
-
-    for j in range(-1, 2, 2):  # For each direction
-        count = 0
-        for i in range(3):
-            try:
-                if board[row + j * i][col + j * i] == opponent_player:
-                    count += 1
-                else:
-                    break
-            except:
-                break
-
-        total_score += count * factor_mult
-
-    for j in range(-1, 2, 2):  # For each direction
-        count = 0
-        for i in range(3):
-            try:
-                if board[row - j * i][col + j * i] == opponent_player:
-                    count += 1
-                else:
-                    break
-            except:
-                break
-
-        total_score += count * factor_mult
+    for row_delta, col_delta in directions:
+        count = count_consecutive_tokens(board, row, col, row_delta, col_delta, target_player)
+        total_score += count * weight
 
     return total_score
 
 
+# Position value table - center positions are more valuable
+POSITION_VALUES = [
+    [3,  4,  5,  7,  5,  4,  3],
+    [4,  6,  8,  10, 8,  6,  4],
+    [5,  8,  11, 13, 11, 8,  5],
+    [5,  8,  11, 13, 11, 8,  5],
+    [4,  6,  8,  10, 8,  6,  4],
+    [3,  4,  5,  7,  5,  4,  3]
+]
+POSITION_WEIGHT = 80
+
+
 def evaluate_board_position(move):
-    list_score_pos = [[3, 4, 5, 7, 5, 4, 3],
-                      [4, 6, 8, 10, 8, 6, 4],
-                      [5, 8, 11, 13, 11, 8, 5],
-                      [5, 8, 11, 13, 11, 8, 5],
-                      [4, 6, 8, 10, 8, 6, 4],
-                      [3, 4, 5, 7, 5, 4, 3]]
-
-    score = list_score_pos[move[0]][move[1]]
-    return 80 * score
+    """
+    Evaluate the strategic value of a board position.
+    Center positions are worth more.
+    """
+    row, col = move[0], move[1]
+    return POSITION_VALUES[row][col] * POSITION_WEIGHT
 
 
-def score_evaluation(player, opponent_player, board, move, maximizing_player, factor_mult1, factor_mult2):
-    score = evaluate_score(opponent_player, board, move, factor_mult1) + evaluate_score(player, board, move, factor_mult2) + evaluate_board_position(move)
+def evaluate_position(player, opponent, board, move, maximizing_player, opponent_weight, player_weight):
+    """
+    Comprehensive position evaluation combining:
+    - Threat evaluation for both players
+    - Positional value of the move
+    """
+    score = (
+        evaluate_threats(board, move, opponent, opponent_weight) +
+        evaluate_threats(board, move, player, player_weight) +
+        evaluate_board_position(move)
+    )
 
     if player != maximizing_player:
         return -score
-
     return score

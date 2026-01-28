@@ -1,18 +1,22 @@
-from src.functions import *
+from src.functions import get_valid_moves
 
-class Player:
 
-    def __init__(self):
-        pass
+class HumanPlayer:
+    """Human player that gets moves via console input."""
 
-    def get_move(self, board, _):
-
-        # Get the available moves
-        available_moves = get_availables_moves(board)
+    def get_move(self, board, player):
+        """
+        Prompt the user to enter a column number.
+        Validates that the column is not full.
+        """
+        valid_moves = get_valid_moves(board)
+        valid_columns = [move[1] for move in valid_moves]
 
         while True:
-            col = int(input("Colonne n° : "))
-            for i in range(len(available_moves)):
-                if col == available_moves[i][1]:
-                    return col
-            print("This column is already full!")
+            try:
+                column = int(input("Enter column number (0-6): "))
+                if column in valid_columns:
+                    return column
+                print("This column is full! Choose another.")
+            except ValueError:
+                print("Please enter a valid number.")
